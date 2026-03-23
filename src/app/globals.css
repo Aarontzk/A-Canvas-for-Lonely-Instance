@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --glow-blue: rgba(0, 212, 255, 0.4);
+  --glow-pink: rgba(255, 45, 138, 0.4);
+  --glow-purple: rgba(180, 77, 255, 0.4);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: radial-gradient(ellipse at top, #1e1033 0%, #111827 40%, #0a0e1a 100%);
+  min-height: 100vh;
+  color: white;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.2);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 255, 0.4);
+}
+
+/* Glassmorphism card */
+.card-glass {
+  @apply backdrop-blur-md bg-white/5 border border-white/10;
+}
+
+/* Text with neon glow */
+.text-glow-blue {
+  text-shadow: 0 0 20px rgba(0, 212, 255, 0.5);
+}
+
+.text-glow-pink {
+  text-shadow: 0 0 20px rgba(255, 45, 138, 0.5);
+}
+
+/* Input styles */
+input, textarea {
+  color-scheme: dark;
+}
+
+/* Range input styling */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  outline: none;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #00d4ff;
+  cursor: pointer;
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.6);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border: none;
+  border-radius: 50%;
+  background: #00d4ff;
+  cursor: pointer;
+}
+
+/* Selection */
+::selection {
+  background: rgba(0, 212, 255, 0.3);
+  color: white;
+}
