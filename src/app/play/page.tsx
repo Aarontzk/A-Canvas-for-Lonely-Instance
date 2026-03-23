@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { Puzzle, Paintbrush, Ghost } from "lucide-react";
+import { Puzzle, Paintbrush, Ghost, CircleDot } from "lucide-react";
 
 const ACTIVITIES = [
   {
@@ -35,6 +35,16 @@ const ACTIVITIES = [
     border: "border-purple-400/30",
     glow: "rgba(165, 180, 252, 0.3)",
     emoji: "👻",
+  },
+  {
+    href: "/play/pop-it",
+    icon: CircleDot,
+    title: "Pop It Ghosty",
+    description: "Tekan gelembung pop it berbentuk Ghosty. Satisfying dan bikin rileks!",
+    gradient: "from-pink-500/20 to-purple-500/20",
+    border: "border-pink-400/30",
+    glow: "rgba(244, 114, 182, 0.3)",
+    emoji: "🫧",
   },
 ];
 
