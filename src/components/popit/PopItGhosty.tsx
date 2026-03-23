@@ -15,63 +15,65 @@ interface Bubble {
   readonly popped: boolean;
 }
 
+interface PopParticle {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly color: string;
+  readonly angle: number;
+  readonly distance: number;
+  readonly size: number;
+}
+
+interface RippleEffect {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly color: string;
+}
+
 interface BoardConfig {
   readonly label: string;
   readonly rows: number;
   readonly cols: number;
-  readonly shape: "square" | "ghost" | "heart" | "circle";
+  readonly shape: "square" | "heart" | "circle" | "star";
 }
 
 const BOARDS: readonly BoardConfig[] = [
-  { label: "Ghosty", rows: 8, cols: 6, shape: "ghost" },
-  { label: "Hati", rows: 7, cols: 7, shape: "heart" },
   { label: "Kotak", rows: 6, cols: 6, shape: "square" },
+  { label: "Hati", rows: 7, cols: 7, shape: "heart" },
   { label: "Bulat", rows: 7, cols: 7, shape: "circle" },
+  { label: "Bintang", rows: 9, cols: 9, shape: "star" },
 ];
 
-// Color palettes
 const PALETTES = [
-  ["#a78bfa", "#818cf8", "#6366f1", "#c4b5fd", "#8b5cf6", "#7c3aed"], // purple
-  ["#f9a8d4", "#f472b6", "#ec4899", "#fda4af", "#fb7185", "#e11d48"], // pink
-  ["#67e8f9", "#22d3ee", "#06b6d4", "#a5f3fc", "#38bdf8", "#0ea5e9"], // cyan
-  ["#86efac", "#4ade80", "#22c55e", "#bbf7d0", "#34d399", "#10b981"], // green
-  ["#fde68a", "#fbbf24", "#f59e0b", "#fcd34d", "#fb923c", "#f97316"], // warm
+  ["#a78bfa", "#818cf8", "#6366f1", "#c4b5fd", "#8b5cf6", "#7c3aed"],
+  ["#f9a8d4", "#f472b6", "#ec4899", "#fda4af", "#fb7185", "#e11d48"],
+  ["#67e8f9", "#22d3ee", "#06b6d4", "#a5f3fc", "#38bdf8", "#0ea5e9"],
+  ["#86efac", "#4ade80", "#22c55e", "#bbf7d0", "#34d399", "#10b981"],
+  ["#fde68a", "#fbbf24", "#f59e0b", "#fcd34d", "#fb923c", "#f97316"],
 ];
 
 // ── Shape masks ───────────────────────────────────────────
 function isInShape(row: number, col: number, rows: number, cols: number, shape: string): boolean {
   const cy = rows / 2;
   const cx = cols / 2;
-  const nr = (row - cy + 0.5) / cy; // normalized -1..1
+  const nr = (row - cy + 0.5) / cy;
   const nc = (col - cx + 0.5) / cx;
 
   switch (shape) {
-    case "ghost": {
-      // Ghost silhouette: round top, wavy bottom
-      if (row < rows * 0.15) return false; // top edge
-      if (row < rows * 0.55) {
-        // Round head
-        const dist = Math.sqrt(((col - cx) / (cols * 0.42)) ** 2 + ((row - rows * 0.35) / (rows * 0.35)) ** 2);
-        return dist <= 1;
-      }
-      // Body
-      if (col < 0.5 || col >= cols - 0.5) return false;
-      // Wavy bottom
-      if (row >= rows - 1) {
-        return col % 2 === 0;
-      }
-      return col >= 1 && col < cols - 1;
-    }
     case "heart": {
-      // Heart shape formula
       const x = nc * 1.2;
       const y = -nr * 1.2 + 0.3;
-      const val = (x * x + y * y - 1) ** 3 - x * x * y * y * y;
-      return val <= 0;
+      return (x * x + y * y - 1) ** 3 - x * x * y * y * y <= 0;
     }
-    case "circle": {
+    case "circle":
+      return Math.sqrt(nr * nr + nc * nc) <= 0.92;
+    case "star": {
+      const angle = Math.atan2(nr, nc);
       const dist = Math.sqrt(nr * nr + nc * nc);
-      return dist <= 0.92;
+      const starR = 0.5 + 0.4 * Math.cos(5 * angle);
+      return dist <= starR;
     }
     case "square":
     default:
@@ -79,23 +81,97 @@ function isInShape(row: number, col: number, rows: number, cols: number, shape: 
   }
 }
 
-// ── Pop sound via AudioContext ─────────────────────────────
-function playPopSound(ctx: AudioContext, pitch: number) {
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.connect(gain);
-  gain.connect(ctx.destination);
+// ── Layered pop sound ─────────────────────────────────────
+function playPopSound(ctx: AudioContext, combo: number) {
+  const t = ctx.currentTime;
+  const baseFreq = 400 + combo * 40 + Math.random() * 100;
 
-  osc.type = "sine";
-  osc.frequency.setValueAtTime(300 + pitch * 200, ctx.currentTime);
-  osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.08);
+  // Layer 1: sharp attack pop
+  const osc1 = ctx.createOscillator();
+  const g1 = ctx.createGain();
+  osc1.connect(g1);
+  g1.connect(ctx.destination);
+  osc1.type = "sine";
+  osc1.frequency.setValueAtTime(baseFreq, t);
+  osc1.frequency.exponentialRampToValueAtTime(60, t + 0.06);
+  g1.gain.setValueAtTime(0.25, t);
+  g1.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+  osc1.start(t);
+  osc1.stop(t + 0.08);
 
-  gain.gain.setValueAtTime(0.15, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+  // Layer 2: bubble burst noise
+  const bufSize = ctx.sampleRate * 0.05;
+  const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * (1 - i / bufSize);
+  }
+  const noise = ctx.createBufferSource();
+  const gNoise = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  noise.buffer = buf;
+  noise.connect(filter);
+  filter.connect(gNoise);
+  gNoise.connect(ctx.destination);
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(baseFreq * 2, t);
+  filter.Q.setValueAtTime(2, t);
+  gNoise.gain.setValueAtTime(0.12, t);
+  gNoise.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+  noise.start(t);
+  noise.stop(t + 0.05);
 
-  osc.start(ctx.currentTime);
-  osc.stop(ctx.currentTime + 0.1);
+  // Layer 3: resonant "boop" (higher combo = higher pitch)
+  const osc2 = ctx.createOscillator();
+  const g2 = ctx.createGain();
+  osc2.connect(g2);
+  g2.connect(ctx.destination);
+  osc2.type = "triangle";
+  osc2.frequency.setValueAtTime(baseFreq * 1.5, t);
+  osc2.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, t + 0.12);
+  g2.gain.setValueAtTime(0.08, t + 0.01);
+  g2.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  osc2.start(t + 0.01);
+  osc2.stop(t + 0.12);
 }
+
+function playComboSound(ctx: AudioContext, combo: number) {
+  const t = ctx.currentTime;
+  // Rising arpeggio based on combo count
+  const notes = [523, 659, 784, 988, 1175]; // C5, E5, G5, B5, D6
+  const note = notes[Math.min(combo - 3, notes.length - 1)];
+
+  const osc = ctx.createOscillator();
+  const g = ctx.createGain();
+  osc.connect(g);
+  g.connect(ctx.destination);
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(note, t);
+  g.gain.setValueAtTime(0.12, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+  osc.start(t);
+  osc.stop(t + 0.3);
+}
+
+function playAllPoppedSound(ctx: AudioContext) {
+  const t = ctx.currentTime;
+  // Victory sparkle: rising chord
+  [523, 659, 784, 1047].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.connect(g);
+    g.connect(ctx.destination);
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(freq, t + i * 0.08);
+    g.gain.setValueAtTime(0.1, t + i * 0.08);
+    g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.08 + 0.5);
+    osc.start(t + i * 0.08);
+    osc.stop(t + i * 0.08 + 0.5);
+  });
+}
+
+// ── Particle ID counter ───────────────────────────────────
+let particleIdCounter = 0;
 
 // ── Component ─────────────────────────────────────────────
 export function PopItGhosty() {
@@ -109,9 +185,12 @@ export function PopItGhosty() {
   const [comboCount, setComboCount] = useState(0);
   const [showCombo, setShowCombo] = useState(false);
   const [lastPopTime, setLastPopTime] = useState(0);
+  const [particles, setParticles] = useState<PopParticle[]>([]);
+  const [ripples, setRipples] = useState<RippleEffect[]>([]);
 
   const audioCtx = useRef<AudioContext | null>(null);
   const comboTimer = useRef<ReturnType<typeof setTimeout>>();
+  const boardRef = useRef<HTMLDivElement>(null);
 
   const board = BOARDS[boardIdx];
   const palette = PALETTES[paletteIdx];
@@ -138,6 +217,8 @@ export function PopItGhosty() {
     setTotalBubbles(count);
     setComboCount(0);
     setShowCombo(false);
+    setParticles([]);
+    setRipples([]);
   }, []);
 
   useEffect(() => { setMounted(true); }, []);
@@ -153,50 +234,96 @@ export function PopItGhosty() {
     return audioCtx.current;
   }, []);
 
-  const popBubble = useCallback((id: number) => {
-    setBubbles(prev => {
-      const bubble = prev.find(b => b.id === id);
-      if (!bubble || bubble.popped) return prev;
-      return prev.map(b => b.id === id ? { ...b, popped: true } : b);
-    });
+  const spawnParticles = useCallback((x: number, y: number, color: string, count: number) => {
+    const newParticles: PopParticle[] = Array.from({ length: count }, () => ({
+      id: particleIdCounter++,
+      x,
+      y,
+      color,
+      angle: Math.random() * Math.PI * 2,
+      distance: 20 + Math.random() * 40,
+      size: 3 + Math.random() * 5,
+    }));
+    setParticles(prev => [...prev, ...newParticles]);
+    setTimeout(() => {
+      setParticles(prev => prev.filter(p => !newParticles.includes(p)));
+    }, 600);
+  }, []);
 
+  const spawnRipple = useCallback((x: number, y: number, color: string) => {
+    const ripple: RippleEffect = { id: particleIdCounter++, x, y, color };
+    setRipples(prev => [...prev, ripple]);
+    setTimeout(() => {
+      setRipples(prev => prev.filter(r => r.id !== ripple.id));
+    }, 500);
+  }, []);
+
+  const popBubble = useCallback((id: number, e: React.MouseEvent | React.TouchEvent) => {
+    const bubble = bubbles.find(b => b.id === id);
+    if (!bubble || bubble.popped) return;
+
+    setBubbles(prev =>
+      prev.map(b => b.id === id ? { ...b, popped: true } : b)
+    );
     setPopCount(c => c + 1);
+
+    // Get position for VFX
+    const target = e.currentTarget as HTMLElement;
+    const boardEl = boardRef.current;
+    if (boardEl && target) {
+      const boardRect = boardEl.getBoundingClientRect();
+      const targetRect = target.getBoundingClientRect();
+      const cx = targetRect.left - boardRect.left + targetRect.width / 2;
+      const cy = targetRect.top - boardRect.top + targetRect.height / 2;
+
+      // Spawn particles
+      const now = Date.now();
+      const isCombo = now - lastPopTime < 400;
+      const pCount = isCombo ? 8 + Math.min(comboCount * 2, 12) : 5;
+      spawnParticles(cx, cy, bubble.color, pCount);
+      spawnRipple(cx, cy, bubble.color);
+    }
 
     // Combo tracking
     const now = Date.now();
-    if (now - lastPopTime < 400) {
-      setComboCount(c => c + 1);
+    const newCombo = now - lastPopTime < 400 ? comboCount + 1 : 1;
+    setComboCount(newCombo);
+    setLastPopTime(now);
+
+    if (newCombo >= 3) {
       setShowCombo(true);
       if (comboTimer.current) clearTimeout(comboTimer.current);
       comboTimer.current = setTimeout(() => {
         setShowCombo(false);
         setComboCount(0);
       }, 1200);
-    } else {
-      setComboCount(1);
     }
-    setLastPopTime(now);
 
     // Sound
     if (soundOn) {
       try {
         const ctx = getAudioCtx();
-        playPopSound(ctx, Math.random());
+        playPopSound(ctx, newCombo);
+        if (newCombo >= 3) playComboSound(ctx, newCombo);
+        // Check if this was the last bubble
+        const newPopCount = bubbles.filter(b => b.popped).length + 1;
+        if (newPopCount === totalBubbles) {
+          setTimeout(() => playAllPoppedSound(ctx), 200);
+        }
       } catch {
         // Audio not available
       }
     }
-  }, [soundOn, getAudioCtx, lastPopTime]);
+  }, [soundOn, getAudioCtx, lastPopTime, comboCount, bubbles, totalBubbles, spawnParticles, spawnRipple]);
 
-  const resetBoard = () => {
-    initBoard(board, palette);
-  };
+  const resetBoard = () => initBoard(board, palette);
 
   const flipBoard = () => {
-    // "Flip" — unflip all popped bubbles
     setBubbles(prev => prev.map(b => ({ ...b, popped: false })));
     setPopCount(0);
     setComboCount(0);
+    setParticles([]);
+    setRipples([]);
   };
 
   const changePalette = () => {
@@ -218,7 +345,6 @@ export function PopItGhosty() {
     <div className="space-y-4">
       {/* Controls */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        {/* Shape selector */}
         <div className="flex items-center gap-1.5">
           {BOARDS.map((b, i) => (
             <button
@@ -252,7 +378,7 @@ export function PopItGhosty() {
       {/* Progress */}
       <div className="flex items-center gap-3">
         <span className="text-sm text-white/50">
-          {popCount}/{totalBubbles} popped
+          {popCount}/{totalBubbles}
         </span>
         <div className="flex-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
           <motion.div
@@ -261,16 +387,15 @@ export function PopItGhosty() {
             transition={{ type: "spring", stiffness: 200 }}
           />
         </div>
-        {/* Combo indicator */}
         <AnimatePresence>
           {showCombo && comboCount >= 3 && (
             <motion.span
               initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
+              animate={{ scale: [1, 1.3, 1], opacity: 1 }}
               exit={{ scale: 0, opacity: 0 }}
-              className="text-xs font-bold text-yellow-400"
+              className="text-sm font-bold text-yellow-400"
             >
-              x{comboCount} COMBO!
+              x{comboCount}!
             </motion.span>
           )}
         </AnimatePresence>
@@ -279,11 +404,59 @@ export function PopItGhosty() {
       {/* Pop It Board */}
       <div className="flex justify-center">
         <div
-          className="relative bg-gradient-to-br from-purple-900/40 to-indigo-900/40 rounded-3xl border border-white/10 p-4 sm:p-6"
-          style={{ maxWidth: 400 }}
+          ref={boardRef}
+          className="relative bg-gradient-to-br from-purple-900/40 to-indigo-900/40 rounded-3xl border border-white/10 p-4 sm:p-6 overflow-hidden"
+          style={{ maxWidth: 420 }}
         >
+          {/* Ripple effects */}
+          <AnimatePresence>
+            {ripples.map(r => (
+              <motion.div
+                key={r.id}
+                className="absolute rounded-full pointer-events-none"
+                style={{
+                  left: r.x,
+                  top: r.y,
+                  transform: "translate(-50%, -50%)",
+                  border: `2px solid ${r.color}`,
+                }}
+                initial={{ width: 10, height: 10, opacity: 0.8 }}
+                animate={{ width: 80, height: 80, opacity: 0 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+              />
+            ))}
+          </AnimatePresence>
+
+          {/* Particle explosions */}
+          <AnimatePresence>
+            {particles.map(p => (
+              <motion.div
+                key={p.id}
+                className="absolute rounded-full pointer-events-none"
+                style={{
+                  left: p.x,
+                  top: p.y,
+                  width: p.size,
+                  height: p.size,
+                  backgroundColor: p.color,
+                  boxShadow: `0 0 6px ${p.color}`,
+                }}
+                initial={{ scale: 1, opacity: 1 }}
+                animate={{
+                  x: Math.cos(p.angle) * p.distance,
+                  y: Math.sin(p.angle) * p.distance,
+                  scale: 0,
+                  opacity: 0,
+                }}
+                transition={{ duration: 0.5, ease: "easeOut" }}
+              />
+            ))}
+          </AnimatePresence>
+
+          {/* Bubble grid */}
           <div
-            className="grid gap-1.5 sm:gap-2"
+            className="grid gap-1.5 sm:gap-2 relative z-10"
             style={{
               gridTemplateColumns: `repeat(${board.cols}, 1fr)`,
               gridTemplateRows: `repeat(${board.rows}, 1fr)`,
@@ -295,69 +468,78 @@ export function PopItGhosty() {
               const bubble = bubbles.find(b => b.row === row && b.col === col);
 
               if (!bubble) {
-                // Empty cell (not part of shape)
-                return <div key={idx} className="w-8 h-8 sm:w-10 sm:h-10" />;
+                return <div key={idx} className="w-9 h-9 sm:w-11 sm:h-11" />;
               }
 
               return (
                 <motion.button
                   key={bubble.id}
-                  onClick={() => popBubble(bubble.id)}
-                  className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full focus:outline-none"
-                  whileTap={!bubble.popped ? { scale: 0.8 } : {}}
-                  style={{ perspective: 200 }}
+                  onClick={(e) => popBubble(bubble.id, e)}
+                  onTouchStart={(e) => {
+                    // Prevent double-fire on touch devices
+                    e.preventDefault();
+                    popBubble(bubble.id, e);
+                  }}
+                  className="relative w-9 h-9 sm:w-11 sm:h-11 rounded-full focus:outline-none active:outline-none"
+                  whileTap={!bubble.popped ? { scale: 0.75 } : {}}
                 >
-                  {/* Unpopped state */}
+                  {/* Unpopped bubble */}
                   <AnimatePresence>
                     {!bubble.popped && (
                       <motion.div
                         className="absolute inset-0 rounded-full cursor-pointer"
                         style={{
-                          background: `radial-gradient(circle at 35% 35%, ${bubble.color}dd, ${bubble.color}88)`,
-                          boxShadow: `inset 0 -3px 6px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2), 0 2px 8px ${bubble.color}44`,
+                          background: `radial-gradient(circle at 30% 30%, ${bubble.color}, ${bubble.color}99)`,
+                          boxShadow: `
+                            inset 0 -4px 8px rgba(0,0,0,0.35),
+                            inset 0 2px 4px rgba(255,255,255,0.25),
+                            0 3px 10px ${bubble.color}55
+                          `,
                         }}
                         exit={{
-                          scale: 0.7,
-                          opacity: 0,
-                          rotateX: 180,
+                          scale: [1, 1.15, 0.6],
+                          opacity: [1, 1, 0],
                         }}
-                        transition={{ duration: 0.15 }}
+                        transition={{ duration: 0.2, ease: "easeOut" }}
                       >
-                        {/* Highlight */}
+                        {/* Glossy highlight */}
                         <div
                           className="absolute rounded-full"
                           style={{
-                            top: "15%",
-                            left: "20%",
-                            width: "35%",
-                            height: "25%",
-                            background: "rgba(255,255,255,0.35)",
+                            top: "12%",
+                            left: "18%",
+                            width: "40%",
+                            height: "28%",
+                            background: "linear-gradient(135deg, rgba(255,255,255,0.45), rgba(255,255,255,0.05))",
                             borderRadius: "50%",
-                            filter: "blur(1px)",
                           }}
                         />
-                        {/* Mini ghost face on some bubbles */}
-                        {(bubble.row + bubble.col) % 4 === 0 && (
-                          <svg
-                            viewBox="0 0 24 24"
-                            className="absolute inset-0 w-full h-full p-1.5 sm:p-2 opacity-30"
-                          >
-                            <circle cx="9" cy="10" r="1.5" fill="rgba(0,0,0,0.6)" />
-                            <circle cx="15" cy="10" r="1.5" fill="rgba(0,0,0,0.6)" />
-                            <path d="M 9 15 Q 12 17 15 15" stroke="rgba(0,0,0,0.5)" strokeWidth="1" fill="none" strokeLinecap="round" />
-                          </svg>
-                        )}
+                        {/* Secondary highlight */}
+                        <div
+                          className="absolute rounded-full"
+                          style={{
+                            bottom: "18%",
+                            right: "15%",
+                            width: "15%",
+                            height: "12%",
+                            background: "rgba(255,255,255,0.15)",
+                            borderRadius: "50%",
+                          }}
+                        />
                       </motion.div>
                     )}
                   </AnimatePresence>
 
-                  {/* Popped state (depressed hole) */}
+                  {/* Popped hole */}
                   {bubble.popped && (
-                    <div
-                      className="absolute inset-1 rounded-full"
+                    <motion.div
+                      className="absolute inset-1.5 rounded-full"
+                      initial={{ scale: 0.5 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", stiffness: 400, damping: 15 }}
                       style={{
-                        background: `radial-gradient(circle at 50% 50%, rgba(0,0,0,0.3), ${bubble.color}22)`,
-                        boxShadow: `inset 0 3px 6px rgba(0,0,0,0.4), inset 0 -1px 3px rgba(255,255,255,0.05)`,
+                        background: `radial-gradient(circle at 50% 50%, rgba(0,0,0,0.35), ${bubble.color}15)`,
+                        boxShadow: `inset 0 4px 8px rgba(0,0,0,0.5), inset 0 -2px 4px rgba(255,255,255,0.03)`,
                       }}
                     />
                   )}
@@ -372,7 +554,7 @@ export function PopItGhosty() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm rounded-3xl z-10"
+                className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm rounded-3xl z-20"
               >
                 <motion.div
                   initial={{ scale: 0 }}
@@ -381,8 +563,8 @@ export function PopItGhosty() {
                   className="text-center space-y-3"
                 >
                   <p className="text-4xl">🎉</p>
-                  <p className="text-lg font-bold text-white">Semua tertekan!</p>
-                  <p className="text-sm text-white/50">Satisfying, kan?</p>
+                  <p className="text-lg font-bold text-white">Semua pop!</p>
+                  <p className="text-sm text-white/50">Puas? Main lagi?</p>
                   <div className="flex gap-2 justify-center">
                     <Button variant="secondary" size="sm" onClick={flipBoard}>
                       <RotateCcw size={14} /> Balik
@@ -399,7 +581,7 @@ export function PopItGhosty() {
       </div>
 
       <p className="text-xs text-white/25 text-center">
-        Tekan gelembung-gelembung untuk merasakan pop yang memuaskan ~
+        Pencet cepat-cepat buat combo! 🔥
       </p>
     </div>
   );
