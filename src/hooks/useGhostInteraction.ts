@@ -4,7 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import type { GhostMood } from "@/components/mascot/ghostExpressions";
 
 const AMBIENT_MOODS: GhostMood[] = [
-  "idle", "calm", "happy", "tired", "hopeful", "idle", "sad", "idle",
+  "idle", "calm", "happy", "tired", "hopeful", "idle", "angry", "sad", "idle",
 ];
 
 const MOOD_CYCLE_MS = 25_000; // change mood every 25 s
@@ -27,11 +27,12 @@ const TAP_LINES: Record<string, readonly string[]> = {
   happy: ["Hehe~", "Yay!", "Senangnya!"],
   calm: ["Hmm...", "Damai~", "Tenang..."],
   sad: ["...", "Hmm...", "Sedih..."],
+  angry: ["Sanaa!!", "SANAA!!", "Grr!", "Sanaa!! 😤", "SANAAAA!!"],
   tired: ["Zzz...", "*nguap*", "Ngantuk..."],
   hopeful: ["Semangat!", "Pasti bisa!", "Ayo!"],
   love: ["<3", "Uwu~", "Suka!"],
   surprised: ["Hah?!", "Waduh!", "Kaget!"],
-  annoyed: ["Udah dong!", "Jangan terus!", "Hmmph!", "Berhenti!", "Ish!"],
+  annoyed: ["Udah dong!", "Jangan terus!", "Hmmph!", "Sanaa!!", "Ish!"],
 };
 
 function pickRandom<T>(arr: readonly T[]): T {
