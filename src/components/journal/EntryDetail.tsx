@@ -9,6 +9,7 @@ import { MOODS } from "@/lib/data/moods";
 import { formatFullDate, formatRelativeDate } from "@/lib/utils/dateFormat";
 import { Button } from "@/components/ui/Button";
 import { DeleteConfirm } from "./DeleteConfirm";
+import { EntryQuote } from "./EntryQuote";
 
 interface EntryDetailProps {
   entry: JournalEntry;
@@ -84,6 +85,9 @@ export function EntryDetail({ entry }: EntryDetailProps) {
         >
           {entry.content}
         </motion.div>
+
+        {/* NLP-matched quote */}
+        <EntryQuote content={entry.content} mood={entry.mood} />
 
         {/* Actions */}
         <motion.div

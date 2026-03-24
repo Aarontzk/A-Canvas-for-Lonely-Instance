@@ -130,10 +130,33 @@ function drawStars(ctx: CanvasRenderingContext2D, w: number, h: number, count: n
   for (let i = 0; i < count; i++) {
     const sx = Math.random() * w;
     const sy = Math.random() * h * yLimit;
-    const r = 0.4 + Math.random() * 1.4;
+    const r = 1 + Math.random() * 2.5;
     ctx.beginPath();
     ctx.arc(sx, sy, r, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(255,255,255,${0.4 + Math.random() * 0.6})`;
+    ctx.fillStyle = `rgba(255,255,255,${0.5 + Math.random() * 0.5})`;
+    ctx.fill();
+  }
+}
+
+function drawAurora(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const colors = [
+    "rgba(0,255,150,0.08)",
+    "rgba(80,200,255,0.06)",
+    "rgba(150,100,255,0.07)",
+    "rgba(0,220,180,0.06)",
+  ];
+  for (let i = 0; i < colors.length; i++) {
+    const y = h * (0.08 + i * 0.1);
+    ctx.fillStyle = colors[i];
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    for (let x = 0; x <= w; x += w * 0.05) {
+      const wave = Math.sin(x / w * Math.PI * 3 + i * 1.5) * h * 0.08;
+      ctx.lineTo(x, y + wave);
+    }
+    ctx.lineTo(w, y + h * 0.15);
+    ctx.lineTo(0, y + h * 0.15);
+    ctx.closePath();
     ctx.fill();
   }
 }
@@ -187,15 +210,17 @@ function drawCloud(ctx: CanvasRenderingContext2D, x: number, y: number, s: numbe
 
 // ── Image 1: Cat on rooftop under moon ────────────────────
 function drawCatRooftop(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  // Night sky
+  // Night sky — deep blue/purple instead of near-black
   const sky = ctx.createLinearGradient(0, 0, 0, h);
-  sky.addColorStop(0, "#05051a");
-  sky.addColorStop(0.5, "#0e1a3a");
-  sky.addColorStop(1, "#1a2850");
+  sky.addColorStop(0, "#0a1030");
+  sky.addColorStop(0.4, "#152050");
+  sky.addColorStop(0.7, "#1a2860");
+  sky.addColorStop(1, "#1e3070");
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, w, h);
 
-  drawStars(ctx, w, h, 180);
+  drawAurora(ctx, w, h);
+  drawStars(ctx, w, h, 200);
   drawMoon(ctx, w * 0.78, h * 0.15, Math.min(w, h) * 0.1);
 
   // City silhouette — buildings
@@ -640,15 +665,16 @@ function drawSunflowerField(ctx: CanvasRenderingContext2D, w: number, h: number)
 
 // ── Image 5: Cozy house at night ──────────────────────────
 function drawCozyHouse(ctx: CanvasRenderingContext2D, w: number, h: number) {
-  // Night sky
+  // Night sky — deep blue/purple with visible color
   const sky = ctx.createLinearGradient(0, 0, 0, h * 0.6);
-  sky.addColorStop(0, "#0a0a2a");
-  sky.addColorStop(0.5, "#1a1a4a");
-  sky.addColorStop(1, "#2a2a5a");
+  sky.addColorStop(0, "#0e1040");
+  sky.addColorStop(0.4, "#1a2060");
+  sky.addColorStop(1, "#2a3070");
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, w, h);
 
-  drawStars(ctx, w, h, 150, 0.5);
+  drawAurora(ctx, w, h);
+  drawStars(ctx, w, h, 160, 0.5);
   drawMoon(ctx, w * 0.82, h * 0.12, Math.min(w, h) * 0.07);
 
   // Snowy ground
