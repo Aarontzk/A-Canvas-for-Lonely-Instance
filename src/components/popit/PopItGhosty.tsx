@@ -13,6 +13,7 @@ interface Bubble {
   readonly col: number;
   readonly color: string;
   readonly popped: boolean;
+  readonly hasGhost: boolean;
 }
 
 interface PopParticle {
@@ -30,6 +31,15 @@ interface RippleEffect {
   readonly x: number;
   readonly y: number;
   readonly color: string;
+}
+
+interface GhostSpirit {
+  readonly id: number;
+  readonly x: number;
+  readonly y: number;
+  readonly color: string;
+  readonly scale: number;
+  readonly drift: number; // horizontal drift direction
 }
 
 interface BoardConfig {
@@ -187,6 +197,7 @@ export function PopItGhosty() {
   const [lastPopTime, setLastPopTime] = useState(0);
   const [particles, setParticles] = useState<PopParticle[]>([]);
   const [ripples, setRipples] = useState<RippleEffect[]>([]);
+  const [ghosts, setGhosts] = useState<GhostSpirit[]>([]);
 
   const audioCtx = useRef<AudioContext | null>(null);
   const comboTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -207,6 +218,7 @@ export function PopItGhosty() {
             col: c,
             color: colors[(r + c) % colors.length],
             popped: false,
+            hasGhost: Math.random() < 0.25,
           });
           count++;
         }
@@ -219,6 +231,7 @@ export function PopItGhosty() {
     setShowCombo(false);
     setParticles([]);
     setRipples([]);
+    setGhosts([]);
   }, []);
 
   useEffect(() => { setMounted(true); }, []);
@@ -258,6 +271,21 @@ export function PopItGhosty() {
     }, 500);
   }, []);
 
+  const spawnGhost = useCallback((x: number, y: number, color: string) => {
+    const ghost: GhostSpirit = {
+      id: particleIdCounter++,
+      x,
+      y,
+      color,
+      scale: 0.8 + Math.random() * 0.5,
+      drift: (Math.random() - 0.5) * 40,
+    };
+    setGhosts(prev => [...prev, ghost]);
+    setTimeout(() => {
+      setGhosts(prev => prev.filter(g => g.id !== ghost.id));
+    }, 1400);
+  }, []);
+
   const popBubble = useCallback((id: number, e: React.MouseEvent | React.TouchEvent) => {
     const bubble = bubbles.find(b => b.id === id);
     if (!bubble || bubble.popped) return;
@@ -282,6 +310,11 @@ export function PopItGhosty() {
       const pCount = isCombo ? 8 + Math.min(comboCount * 2, 12) : 5;
       spawnParticles(cx, cy, bubble.color, pCount);
       spawnRipple(cx, cy, bubble.color);
+
+      // Ghost spirit flies out of some bubbles
+      if (bubble.hasGhost) {
+        spawnGhost(cx, cy, bubble.color);
+      }
     }
 
     // Combo tracking
@@ -314,16 +347,18 @@ export function PopItGhosty() {
         // Audio not available
       }
     }
-  }, [soundOn, getAudioCtx, lastPopTime, comboCount, bubbles, totalBubbles, spawnParticles, spawnRipple]);
+  }, [soundOn, getAudioCtx, lastPopTime, comboCount, bubbles, totalBubbles, spawnParticles, spawnRipple, spawnGhost]);
 
   const resetBoard = () => initBoard(board, palette);
 
   const flipBoard = () => {
-    setBubbles(prev => prev.map(b => ({ ...b, popped: false })));
+    // Re-randomize ghost assignment on flip
+    setBubbles(prev => prev.map(b => ({ ...b, popped: false, hasGhost: Math.random() < 0.25 })));
     setPopCount(0);
     setComboCount(0);
     setParticles([]);
     setRipples([]);
+    setGhosts([]);
   };
 
   const changePalette = () => {
@@ -451,6 +486,46 @@ export function PopItGhosty() {
                 }}
                 transition={{ duration: 0.5, ease: "easeOut" }}
               />
+            ))}
+          </AnimatePresence>
+
+          {/* Ghost spirits floating out */}
+          <AnimatePresence>
+            {ghosts.map(g => (
+              <motion.div
+                key={g.id}
+                className="absolute pointer-events-none z-20"
+                style={{
+                  left: g.x,
+                  top: g.y,
+                  transform: "translate(-50%, -50%)",
+                }}
+                initial={{ scale: 0.3, opacity: 0, y: 0, x: 0 }}
+                animate={{
+                  scale: [0.3, g.scale, g.scale * 0.8, 0],
+                  opacity: [0, 0.9, 0.7, 0],
+                  y: [0, -30, -70, -110],
+                  x: [0, g.drift * 0.3, g.drift * 0.7, g.drift],
+                }}
+                exit={{ opacity: 0, scale: 0 }}
+                transition={{ duration: 1.3, ease: "easeOut" }}
+              >
+                <svg viewBox="0 0 44 50" width={32} height={36}>
+                  {/* Ghost body */}
+                  <path
+                    d="M 22 4 C 9 4 5 14 5 25 C 5 35 6 41 9 44 C 11 46 13 45 15 43 C 17 41 19 41 22 43 C 25 41 27 41 29 43 C 31 45 33 46 35 44 C 38 41 39 35 39 25 C 39 14 35 4 22 4 Z"
+                    fill={g.color}
+                    opacity={0.85}
+                  />
+                  {/* Ghost shading */}
+                  <ellipse cx="22" cy="22" rx="10" ry="12" fill="rgba(255,255,255,0.15)" />
+                  {/* Eyes */}
+                  <ellipse cx="16" cy="20" rx="2.5" ry="3" fill="rgba(15,23,42,0.7)" />
+                  <ellipse cx="28" cy="20" rx="2.5" ry="3" fill="rgba(15,23,42,0.7)" />
+                  {/* Mouth — little O */}
+                  <ellipse cx="22" cy="28" rx="2.5" ry="2" fill="rgba(15,23,42,0.4)" />
+                </svg>
+              </motion.div>
             ))}
           </AnimatePresence>
 
