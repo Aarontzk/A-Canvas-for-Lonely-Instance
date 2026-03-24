@@ -19,7 +19,6 @@ const DIFFICULTIES = [
 ];
 const DEFAULT_DIFF = 1; // Medium (3x3)
 const SNAP_THRESHOLD = 60; // px — much more forgiving
-const TAB_PAD = 18;
 
 interface PieceCanvasMap {
   [id: number]: HTMLCanvasElement;
@@ -37,6 +36,7 @@ export function JigsawPuzzle() {
   const [solved, setSolved] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showHint, setShowHint] = useState(false);
+  const [tabPad, setTabPad] = useState(0);
   const [mounted, setMounted] = useState(false);
 
   const dragInfo = useRef<{
@@ -65,6 +65,10 @@ export function JigsawPuzzle() {
       setCellW(cw);
       setCellH(ch);
 
+      // Dynamic tab padding — must exceed max tab protrusion (0.28 * edge length)
+      const tp = Math.ceil(Math.max(cw, ch) * 0.35);
+      setTabPad(tp);
+
       source.width = bw;
       source.height = bh;
       drawPuzzleImage(source);
@@ -78,8 +82,8 @@ export function JigsawPuzzle() {
         const cy2 = bh / 2 + Math.sin(angle) * ry;
         return {
           ...p,
-          x: Math.max(TAB_PAD, Math.min(bw - cw - TAB_PAD, cx2 - cw / 2)),
-          y: Math.max(TAB_PAD, Math.min(bh - ch - TAB_PAD, cy2 - ch / 2)),
+          x: Math.max(tp, Math.min(bw - cw - tp, cx2 - cw / 2)),
+          y: Math.max(tp, Math.min(bh - ch - tp, cy2 - ch / 2)),
         };
       });
       setPieces(newPieces);
@@ -90,20 +94,20 @@ export function JigsawPuzzle() {
       pieceCanvasMap.current = {};
       newPieces.forEach((p) => {
         const pc = document.createElement("canvas");
-        const pw = cw + TAB_PAD * 2;
-        const ph = ch + TAB_PAD * 2;
+        const pw = cw + tp * 2;
+        const ph = ch + tp * 2;
         pc.width = pw;
         pc.height = ph;
         const ctx = pc.getContext("2d")!;
 
-        buildPiecePath(ctx, p.edges, cw, ch, TAB_PAD);
+        buildPiecePath(ctx, p.edges, cw, ch, tp);
         ctx.save();
         ctx.clip();
-        ctx.drawImage(source, p.col * cw - TAB_PAD, p.row * ch - TAB_PAD, pw, ph, 0, 0, pw, ph);
+        ctx.drawImage(source, p.col * cw - tp, p.row * ch - tp, pw, ph, 0, 0, pw, ph);
         ctx.restore();
 
         // Inner shadow
-        buildPiecePath(ctx, p.edges, cw, ch, TAB_PAD);
+        buildPiecePath(ctx, p.edges, cw, ch, tp);
         ctx.save();
         ctx.clip();
         ctx.strokeStyle = "rgba(0,0,0,0.35)";
@@ -112,7 +116,7 @@ export function JigsawPuzzle() {
         ctx.restore();
 
         // Neon edge
-        buildPiecePath(ctx, p.edges, cw, ch, TAB_PAD);
+        buildPiecePath(ctx, p.edges, cw, ch, tp);
         ctx.strokeStyle = "rgba(0,212,255,0.25)";
         ctx.lineWidth = 1.5;
         ctx.stroke();
@@ -356,10 +360,10 @@ export function JigsawPuzzle() {
               key={p.id}
               className="absolute"
               style={{
-                left: p.x - TAB_PAD,
-                top: p.y - TAB_PAD,
-                width: cellW + TAB_PAD * 2,
-                height: cellH + TAB_PAD * 2,
+                left: p.x - tabPad,
+                top: p.y - tabPad,
+                width: cellW + tabPad * 2,
+                height: cellH + tabPad * 2,
                 cursor: p.placed ? "default" : "grab",
                 zIndex: p.placed ? 1 : 10,
                 filter: p.placed
