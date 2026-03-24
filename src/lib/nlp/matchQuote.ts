@@ -27,6 +27,7 @@ const THEME_KEYWORDS: Record<Theme, readonly string[]> = {
   loneliness: [
     "sendiri", "sepi", "kesepian", "sendirian", "hampa", "kosong",
     "ditinggal", "alone", "lonely", "sunyi", "isolasi", "jauh",
+    "ngobrol", "gaada", "gak ada", "ditinggalin", "diabaikan",
   ],
   love: [
     "cinta", "sayang", "suka", "rindu", "kangen", "hati", "kasih",
@@ -35,6 +36,9 @@ const THEME_KEYWORDS: Record<Theme, readonly string[]> = {
   sadness: [
     "sedih", "nangis", "menangis", "hancur", "patah", "galau", "kecewa",
     "duka", "pilu", "perih", "luka", "kehilangan", "hilang", "menyesal",
+    "gagal", "pecundang", "malu", "minder", "bodoh", "payah", "buruk",
+    "jelek", "down", "hopeless", "nyesel", "sia-sia", "rendah",
+    "nggak bisa", "gak bisa", "loser", "worthless", "lemah",
   ],
   anger: [
     "marah", "kesal", "benci", "emosi", "frustasi", "jengkel", "dongkol",
@@ -43,6 +47,7 @@ const THEME_KEYWORDS: Record<Theme, readonly string[]> = {
   anxiety: [
     "cemas", "takut", "khawatir", "gelisah", "panik", "gugup", "tegang",
     "stress", "overthink", "insomnia", "resah", "waswas", "deg",
+    "pusing", "bingung", "blank", "grogi", "mual", "berbelit", "nyambung",
   ],
   growth: [
     "belajar", "tumbuh", "berkembang", "progress", "maju", "berubah",
@@ -53,19 +58,20 @@ const THEME_KEYWORDS: Record<Theme, readonly string[]> = {
     "meditasi", "harmoni", "seimbang", "hening", "diam", "calm",
   ],
   hope: [
-    "harap", "berharap", "impian", "mimpi", "semangat", "bisa", "yakin",
+    "harap", "berharap", "impian", "mimpi", "semangat", "yakin",
     "optimis", "percaya", "masa depan", "harapan", "dream",
   ],
   strength: [
     "kuat", "bangkit", "bertahan", "survive", "pejuang", "tangguh",
     "tegar", "gigih", "berani", "tabah", "pantang", "fighter",
+    "gagal", "jatuh", "kalah", "pecundang",
   ],
   gratitude: [
     "syukur", "bersyukur", "grateful", "nikmat", "berkah", "anugerah",
     "karunia", "apresiasi", "terima kasih", "thankful", "blessed",
   ],
   work: [
-    "kerja", "deadline", "tugas", "kantor", "capek", "lelah", "sibuk",
+    "kerja", "deadline", "tugas", "kantor", "sibuk",
     "meeting", "proyek", "project", "lembur", "produktif", "karir",
   ],
   friendship: [
@@ -81,11 +87,11 @@ const THEME_KEYWORDS: Record<Theme, readonly string[]> = {
 // ── Mood → theme fallback mapping ────────────────────────
 const MOOD_THEMES: Record<Mood, readonly Theme[]> = {
   happy: ["gratitude", "hope", "love"],
-  sad: ["sadness", "hope", "strength"],
+  sad: ["sadness", "strength", "hope"],
   angry: ["anger", "strength", "peace"],
   anxious: ["anxiety", "peace", "hope"],
   calm: ["peace", "gratitude", "growth"],
-  tired: ["work", "strength", "peace"],
+  tired: ["strength", "peace", "hope"],
   hopeful: ["hope", "growth", "strength"],
 };
 
@@ -145,7 +151,7 @@ const THEMED_QUOTES: readonly ThemedQuote[] = [
   { text: "Istirahat sejenak bukan berarti menyerah. Itu berarti kamu menghargai dirimu sendiri.", author: "Anonim", theme: "work" },
   { text: "Almost everything will work again if you unplug it for a few minutes, including you.", author: "Anne Lamott", theme: "work" },
   { text: "Kamu tidak harus menyukai prosesnya, cukup jalani dan lihat hasilnya nanti.", author: "Anonim", theme: "work" },
-  { text: "The secret of getting ahead is getting started.", author: "Mark Twain", theme: "work" },
+  { text: "You are not defined by your job. You are defined by how you treat yourself after a hard day.", author: "Anonim", theme: "work" },
   // Friendship
   { text: "Teman sejati bukan yang hadir saat kamu di puncak, tapi yang bertahan saat kamu di bawah.", author: "Anonim", theme: "friendship" },
   { text: "A real friend is one who walks in when the rest of the world walks out.", author: "Walter Winchell", theme: "friendship" },
